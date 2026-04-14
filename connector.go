@@ -25,28 +25,48 @@ type Connector interface {
 }
 
 type connector struct {
-	cdc    cdc.Connector
-	bulk   *bulk.Bulk
-	mapper Mapper
+	cdc     cdc.Connector
+	bulk    *bulk.Bulk
+	mapper  Mapper
+	cfg     *config.Connector
+	readyCh chan struct{}
 }
 
 func (c *connector) Start(ctx context.Context) {
+	if c.cfg.Postgres.IsSnapshotOnlyMode() {
+		slog.Info("starting snapshot-only mode")
+		c.bulk.StartBatchTicker()
+		c.readyCh <- struct{}{}
+		c.cdc.Start(ctx)
+		slog.Info("snapshot-only mode completed")
+		return
+	}
+
 	go func() {
-		if err := c.WaitUntilReady(ctx); err != nil {
+		if err := c.cdc.WaitUntilReady(ctx); err != nil {
 			slog.Error("wait until ready failed", "error", err)
 			return
 		}
 		c.bulk.StartBatchTicker()
 		slog.Info("batch ticker started")
+		c.readyCh <- struct{}{}
 	}()
 	c.cdc.Start(ctx)
 }
 
 func (c *connector) WaitUntilReady(ctx context.Context) error {
-	return c.cdc.WaitUntilReady(ctx)
+	select {
+	case <-c.readyCh:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (c *connector) Close() {
+	if !isClosed(c.readyCh) {
+		close(c.readyCh)
+	}
 	c.cdc.Close()
 	c.bulk.Close()
 	slog.Info("connector closed")
@@ -89,8 +109,9 @@ func eventTime(msg any) time.Time {
 }
 
 type ConnectorBuilder struct {
-	mapper Mapper
-	config any
+	mapper          Mapper
+	responseHandler bulk.ResponseHandler
+	config          any
 }
 
 func newConnectorConfig(cf any) (*config.Connector, error) {
@@ -118,7 +139,12 @@ func (b ConnectorBuilder) SetMapper(mapper Mapper) ConnectorBuilder {
 	return b
 }
 
-func (b ConnectorBuilder) Build() (Connector, error) {
+func (b ConnectorBuilder) SetResponseHandler(handler bulk.ResponseHandler) ConnectorBuilder {
+	b.responseHandler = handler
+	return b
+}
+
+func (b ConnectorBuilder) Build(ctx context.Context) (Connector, error) {
 	cfg, err := newConnectorConfig(b.config)
 	if err != nil {
 		return nil, err
@@ -131,17 +157,19 @@ func (b ConnectorBuilder) Build() (Connector, error) {
 	SetTableKeyMappings(cfg.Redis.TableKeyMapping)
 	printRedisConfig(cfg.Redis)
 
-	bulkLayer, err := bulk.NewBulk(cfg)
+	bulkLayer, err := bulk.NewBulk(cfg, b.responseHandler)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &connector{
-		mapper: b.mapper,
-		bulk:   bulkLayer,
+		mapper:  b.mapper,
+		bulk:    bulkLayer,
+		cfg:     cfg,
+		readyCh: make(chan struct{}, 1),
 	}
 
-	cdcConn, err := cdc.NewConnector(context.Background(), cfg.Postgres, c.listener)
+	cdcConn, err := cdc.NewConnector(ctx, cfg.Postgres, c.listener)
 	if err != nil {
 		bulkLayer.Close()
 		return nil, err
@@ -165,4 +193,13 @@ func printRedisConfig(cfg config.Redis) {
 	}
 	b, _ := json.Marshal(cp)
 	slog.Info("redis config", "config", string(b))
+}
+
+func isClosed[T any](ch <-chan T) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+		return false
+	}
 }

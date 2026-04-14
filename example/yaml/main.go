@@ -9,7 +9,8 @@ import (
 )
 
 func main() {
-	conn, err := pgredis.NewConnectorBuilder("config.yml").Build()
+	ctx := context.Background()
+	conn, err := pgredis.NewConnectorBuilder("config.yml").Build(ctx)
 	if err != nil {
 		slog.Error("connector build failed", "error", err)
 		os.Exit(1)

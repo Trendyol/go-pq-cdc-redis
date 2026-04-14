@@ -70,7 +70,7 @@ func main() {
 
 	conn, err := pgredis.NewConnectorBuilder(cfg).
 		SetMapper(customMapper).
-		Build()
+		Build(ctx)
 	if err != nil {
 		slog.Error("connector build failed", "error", err)
 		os.Exit(1)

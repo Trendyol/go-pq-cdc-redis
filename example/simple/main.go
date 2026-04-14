@@ -67,7 +67,7 @@ func main() {
 		},
 	}
 
-	conn, err := pgredis.NewConnectorBuilder(cfg).Build()
+	conn, err := pgredis.NewConnectorBuilder(cfg).Build(ctx)
 	if err != nil {
 		slog.Error("connector build failed", "error", err)
 		os.Exit(1)

@@ -2,9 +2,9 @@ package bulk
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"go-dcp-pg-redis/config"
@@ -15,15 +15,16 @@ import (
 )
 
 type Bulk struct {
-	redisClient  client.RedisClient
-	metric       *Metric
-	mu           sync.Mutex
-	ctx          context.Context
-	cancel       context.CancelFunc
-	buffer       []batchEntry
-	maxBatchSize int
-	ticker       *time.Ticker
-	wg           sync.WaitGroup
+	redisClient     client.RedisClient
+	responseHandler ResponseHandler
+	metric          *Metric
+	mu              sync.Mutex
+	ctx             context.Context
+	cancel          context.CancelFunc
+	buffer          []batchEntry
+	maxBatchSize    int
+	ticker          *time.Ticker
+	wg              sync.WaitGroup
 }
 
 type batchEntry struct {
@@ -36,22 +37,29 @@ type Metric struct {
 	ProcessLatencyMs            int64
 	BulkRequestProcessLatencyMs int64
 	CurrentBatchSize            int64
+	FlushSuccessTotal           atomic.Int64
+	FlushErrorTotal             atomic.Int64
+	TotalProcessed              atomic.Int64
 }
 
-func NewBulk(cfg *config.Connector) (*Bulk, error) {
+func NewBulk(cfg *config.Connector, responseHandler ResponseHandler) (*Bulk, error) {
 	c, err := client.NewRedisClient(cfg.Redis)
 	if err != nil {
 		return nil, err
 	}
+	if responseHandler == nil {
+		responseHandler = &DefaultResponseHandler{}
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Bulk{
-		redisClient:  c,
-		metric:       &Metric{},
-		ctx:          ctx,
-		cancel:       cancel,
-		buffer:       make([]batchEntry, 0, cfg.Redis.MaxBatchSize),
-		maxBatchSize: cfg.Redis.MaxBatchSize,
-		ticker:       time.NewTicker(cfg.Redis.BatchTickerDuration),
+		redisClient:     c,
+		responseHandler: responseHandler,
+		metric:          &Metric{},
+		ctx:             ctx,
+		cancel:          cancel,
+		buffer:          make([]batchEntry, 0, cfg.Redis.MaxBatchSize),
+		maxBatchSize:    cfg.Redis.MaxBatchSize,
+		ticker:          time.NewTicker(cfg.Redis.BatchTickerDuration),
 	}, nil
 }
 
@@ -116,8 +124,9 @@ func (b *Bulk) flushLocked() {
 	entries := b.buffer
 	b.buffer = make([]batchEntry, 0, b.maxBatchSize)
 
+	batchSize := len(entries)
 	b.metric.ProcessLatencyMs = time.Since(entries[0].eventTime).Milliseconds()
-	b.metric.CurrentBatchSize = int64(len(entries))
+	b.metric.CurrentBatchSize = int64(batchSize)
 
 	started := time.Now()
 
@@ -129,11 +138,16 @@ func (b *Bulk) flushLocked() {
 	}
 
 	if _, err := pipe.Exec(b.ctx); err != nil && err != goredis.Nil {
-		slog.Error("redis pipeline exec failed", "error", err, "batch_size", len(entries))
-		panic(fmt.Errorf("redis pipeline: %w", err))
+		b.metric.FlushErrorTotal.Add(1)
+		b.responseHandler.OnError(&ResponseHandlerContext{Err: err, BatchSize: batchSize})
+		return
 	}
 
 	b.metric.BulkRequestProcessLatencyMs = time.Since(started).Milliseconds()
+	b.metric.FlushSuccessTotal.Add(1)
+	b.metric.TotalProcessed.Add(int64(batchSize))
+
+	b.responseHandler.OnSuccess(&ResponseHandlerContext{BatchSize: batchSize})
 
 	lastAck := entries[len(entries)-1].ack
 	if err := lastAck(); err != nil {

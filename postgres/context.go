@@ -21,7 +21,6 @@ type Event struct {
 	IsSnapshot     bool
 	NewRow         map[string]any
 	OldRow         map[string]any
-	Snapshot       *format.Snapshot
 }
 
 func ContextFromMessage(msg any) (Context, bool) {
@@ -73,7 +72,6 @@ func ContextFromMessage(msg any) (Context, bool) {
 				IsSnapshot:     true,
 				IsInsert:       true,
 				NewRow:         m.Data,
-				Snapshot:       m,
 			},
 		}, true
 	default:
