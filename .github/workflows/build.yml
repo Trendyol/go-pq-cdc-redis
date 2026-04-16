@@ -34,11 +34,10 @@ jobs:
       - name: Test
         run: go test -race -count=1 ./...
 
-  security-gates:
-    uses: Trendyol/security-actions/.github/workflows/security-gates.yml@master
-    needs: build
-    secrets: inherit
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
+security-gates:
+  uses: Trendyol/security-actions/.github/workflows/security-gates.yml@master
+  permissions:
+    actions: read
+    contents: read
+    security-events: write
+  secrets: inherit
