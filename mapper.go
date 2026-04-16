@@ -3,12 +3,11 @@ package pgredis
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
-	"sync"
-
 	"go-dcp-pg-redis/config"
 	"go-dcp-pg-redis/postgres"
 	"go-dcp-pg-redis/redis"
+	"log/slog"
+	"sync"
 )
 
 type Mapper func(ctx postgres.Context) []redis.Model

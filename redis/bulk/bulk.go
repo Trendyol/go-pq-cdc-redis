@@ -2,14 +2,13 @@ package bulk
 
 import (
 	"context"
+	"go-dcp-pg-redis/config"
+	"go-dcp-pg-redis/redis"
+	"go-dcp-pg-redis/redis/client"
 	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"go-dcp-pg-redis/config"
-	"go-dcp-pg-redis/redis"
-	"go-dcp-pg-redis/redis/client"
 
 	goredis "github.com/redis/go-redis/v9"
 )

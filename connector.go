@@ -4,17 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"go-dcp-pg-redis/config"
+	"go-dcp-pg-redis/metric"
+	"go-dcp-pg-redis/postgres"
+	"go-dcp-pg-redis/redis/bulk"
 	"log/slog"
 	"time"
 
 	cdc "github.com/Trendyol/go-pq-cdc"
 	"github.com/Trendyol/go-pq-cdc/pq/message/format"
 	"github.com/Trendyol/go-pq-cdc/pq/replication"
-
-	"go-dcp-pg-redis/config"
-	"go-dcp-pg-redis/metric"
-	"go-dcp-pg-redis/postgres"
-	"go-dcp-pg-redis/redis/bulk"
 )
 
 type Connector interface {
@@ -182,14 +181,16 @@ func (b ConnectorBuilder) Build(ctx context.Context) (Connector, error) {
 	return c, nil
 }
 
+const maskedPassword = "*****"
+
 func printRedisConfig(cfg config.Redis) {
 	cp := cfg
-	cp.Password = "*****"
+	cp.Password = maskedPassword
 	if cp.Cluster != nil {
-		cp.Cluster.Password = "*****"
+		cp.Cluster.Password = maskedPassword
 	}
 	if cp.Sentinel != nil {
-		cp.Sentinel.Password = "*****"
+		cp.Sentinel.Password = maskedPassword
 	}
 	b, _ := json.Marshal(cp)
 	slog.Info("redis config", "config", string(b))

@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-
 	"go-dcp-pg-redis/config"
 
 	"github.com/redis/go-redis/v9"

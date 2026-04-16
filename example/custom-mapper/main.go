@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"go-dcp-pg-redis/postgres"
+	"go-dcp-pg-redis/redis"
 	"log/slog"
 	"os"
 
 	pgredis "go-dcp-pg-redis"
 	connconfig "go-dcp-pg-redis/config"
-	"go-dcp-pg-redis/postgres"
-	"go-dcp-pg-redis/redis"
 
 	cdcconfig "github.com/Trendyol/go-pq-cdc/config"
 	"github.com/Trendyol/go-pq-cdc/pq/publication"

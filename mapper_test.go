@@ -1,12 +1,11 @@
 package pgredis
 
 import (
-	"testing"
-	"time"
-
 	"go-dcp-pg-redis/config"
 	"go-dcp-pg-redis/postgres"
 	"go-dcp-pg-redis/redis"
+	"testing"
+	"time"
 )
 
 func TestSetTableKeyMappings(t *testing.T) {
