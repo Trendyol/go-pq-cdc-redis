@@ -37,6 +37,7 @@ jobs:
   security-gates:
     uses: Trendyol/security-actions/.github/workflows/security-gates.yml@master
     needs: build
+    secrets: inherit
     permissions:
       actions: read
       contents: read
