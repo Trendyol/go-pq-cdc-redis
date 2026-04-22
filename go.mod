@@ -3,7 +3,7 @@ module go-dcp-pg-redis
 go 1.22.4
 
 require (
-	github.com/Trendyol/go-pq-cdc v1.7.8
+	github.com/Trendyol/go-pq-cdc v1.8.9
 	github.com/go-playground/errors v3.3.0+incompatible
 	github.com/prometheus/client_golang v1.19.1
 	github.com/redis/go-redis/v9 v9.14.0
