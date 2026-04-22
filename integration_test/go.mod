@@ -5,7 +5,7 @@ go 1.22.4
 replace go-dcp-pg-redis => ../
 
 require (
-	github.com/Trendyol/go-pq-cdc v1.7.8
+	github.com/Trendyol/go-pq-cdc v1.8.9
 	github.com/redis/go-redis/v9 v9.14.0
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.31.0
