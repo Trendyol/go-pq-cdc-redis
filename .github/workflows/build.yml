@@ -1,0 +1,44 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22.4'
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Lint
+        run: golangci-lint run
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -race -count=1 ./...
+
+  security-gates:
+    uses: Trendyol/security-actions/.github/workflows/security-gates.yml@master
+    needs: build
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    secrets: inherit

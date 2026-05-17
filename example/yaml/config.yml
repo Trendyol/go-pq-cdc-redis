@@ -1,0 +1,38 @@
+postgres:
+  host: 127.0.0.1
+  port: 5433
+  username: cdc_user
+  password: cdc_pass
+  database: cdc_db
+  debugMode: false
+  publication:
+    createIfNotExists: true
+    name: cdc_publication
+    operations:
+      - INSERT
+      - UPDATE
+      - DELETE
+    tables:
+      - name: users
+        replicaIdentity: FULL
+        schema: public
+  slot:
+    createIfNotExists: true
+    name: cdc_slot_pg_redis
+    slotActivityCheckerInterval: 3000
+  metric:
+    port: 8081
+  logger:
+    logLevel: INFO
+
+redis:
+  host: 127.0.0.1
+  port: 6379
+  batchTickerDuration: 10s
+  maxBatchSize: 1000
+  tableKeyMapping:
+    - schema: public
+      table: users
+      keyPrefix: "user:"
+      keyColumn: id
+      storageType: json
