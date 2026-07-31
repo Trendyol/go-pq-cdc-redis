@@ -1,3 +1,5 @@
+
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Trendyol/go-pq-cdc-redis/badge)](https://scorecard.dev/viewer/?uri=github.com/Trendyol/go-pq-cdc-redis)
 # go-dcp-pg-redis
 
 Go implementation of PostgreSQL to Redis connector using [go-pq-cdc](https://github.com/Trendyol/go-pq-cdc).
